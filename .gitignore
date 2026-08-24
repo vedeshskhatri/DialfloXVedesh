@@ -49,6 +49,7 @@ Thumbs.db
 
 # Allow public sample smoke test audio
 !samples/sample.wav
+!samples/speech_sample.wav
 
 # Docker build artifacts
 *.tar
