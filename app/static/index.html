@@ -605,16 +605,23 @@
             </div>
 
             <div class="samples-section">
-              <div class="section-label">Quick Test Datasets</div>
+              <div class="section-label">Quick Test Audio Samples</div>
               <div class="sample-chips">
-                <button class="sample-chip" onclick="loadSample('/samples/speech_sample.wav', 'LibriSpeech Speech Sample')">
-                  🔊 LibriSpeech Speech Clip
+                <button class="sample-chip" onclick="loadSample('/samples/speech_sample.wav', 'Male Speech (LibriSpeech)')">
+                  👨 Male Speech (Clean)
+                </button>
+                <button class="sample-chip" onclick="loadSample('/samples/female_sample.wav', 'Female Speech (ASR Benchmark)')">
+                  👩 Female Speech (Clean)
+                </button>
+                <button class="sample-chip" onclick="loadSample('/samples/noisy_warehouse_sample.wav', 'Noisy Warehouse Speech (~10dB SNR)')">
+                  🏭 Noisy Warehouse Audio
                 </button>
                 <button class="sample-chip" onclick="loadSample('/samples/sample.wav', 'Synthetic Voiced Harmonic')">
-                  🎵 Synthetic Voiced Harmonic
+                  🎵 Synthetic Voiced Tone
                 </button>
               </div>
             </div>
+
           </div>
 
           <!-- Microphone Mode -->
