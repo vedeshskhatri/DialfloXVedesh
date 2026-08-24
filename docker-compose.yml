@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  voice-attributes:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dialflo-voice-attributes:latest
+    container_name: dialflo-voice-attributes
+    ports:
+      - "8000:8000"
+    environment:
+      # Model cache already baked into image; these are just safety overrides.
+      - TRANSFORMERS_CACHE=/models
+      - HF_HOME=/models
+      - HUGGINGFACE_HUB_VERBOSITY=warning
+      # Tune workers if running on a multi-core host.
+      # Default is 1 (see Dockerfile CMD); override here for local perf testing.
+      # - WORKERS=2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # No volumes — audio is never written to disk.
+    # No external services — model weights are baked into the image.
+    # This satisfies "docker compose up with no external dependencies" per spec.

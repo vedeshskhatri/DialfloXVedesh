@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Model weights — downloaded at Docker build time, not committed
+pretrained_models/
+models/
+*.bin
+*.safetensors
+*.gguf
+
+# HuggingFace cache
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Real audio files — never commit caller audio (see DPDP_PRIVACY.md)
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.opus
+*.m4a
+*.amr
+# Exception: synthetic test fixtures you explicitly create (uncomment if needed)
+# !samples/synthetic_test.wav
+
+# Docker build artifacts
+*.tar

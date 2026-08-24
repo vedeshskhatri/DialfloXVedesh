@@ -1,0 +1,29 @@
+# Dialflo Voice Attribute Inference — Python dependencies
+# Pin major versions; allow minor/patch updates for security fixes.
+
+# API layer
+fastapi>=0.100.0
+uvicorn[standard]>=0.20.0
+python-multipart>=0.0.9       # required for FastAPI File/Form uploads
+
+# Audio decoding + resampling
+soundfile>=0.12.0             # WAV/FLAC/OGG decode; wraps libsndfile
+librosa>=0.10.0               # resampling (uses soxr backend when available)
+numpy>=1.24.0
+
+# Voice activity detection (quality gate)
+webrtcvad-wheels>=2.0.14      # webrtcvad with pre-built wheels for all platforms
+
+# ML inference
+torch>=2.0.0                  # CPU-only is fine; see Dockerfile for CPU torch
+transformers>=4.36.0          # audeering model loading
+huggingface-hub>=0.20.0       # weight download at build time
+
+# Language ID (optional bonus — SpeechBrain)
+# speechbrain>=1.0.0          # uncomment to enable /language field
+# torchaudio>=2.0.0           # required by SpeechBrain
+
+# Testing
+pytest>=7.0.0
+httpx>=0.24.0                 # async test client for FastAPI
+pytest-asyncio>=0.21.0        # async test support
