@@ -38,7 +38,7 @@ models/
 .DS_Store
 Thumbs.db
 
-# Real audio files — never commit caller audio (see DPDP_PRIVACY.md)
+# Audio files — never commit real caller audio (see DPDP_PRIVACY.md)
 *.wav
 *.mp3
 *.flac
@@ -46,8 +46,9 @@ Thumbs.db
 *.opus
 *.m4a
 *.amr
-# Exception: synthetic test fixtures you explicitly create (uncomment if needed)
-# !samples/synthetic_test.wav
+
+# Allow public sample smoke test audio
+!samples/sample.wav
 
 # Docker build artifacts
 *.tar

@@ -5,9 +5,18 @@ no external audio file is needed to run the tests.
 
 For a real-world smoke test against the running service, use one of the following:
 
+## Option 0: Included Sample File (Instant)
+
+A ready-to-use harmonic sample audio file is pre-included in the repository at `samples/sample.wav`.
+You can test the running API immediately with:
+
+```bash
+curl -F audio=@samples/sample.wav http://localhost:8000/analyze
+```
+
 ---
 
-## Option 1: Mozilla Common Voice (recommended)
+## Option 1: Mozilla Common Voice (recommended for eval)
 
 Mozilla Common Voice is the correct dataset for this service because it includes
 age, gender, and accent metadata — the same labels our model predicts.
