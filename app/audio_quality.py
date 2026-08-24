@@ -39,11 +39,33 @@ class QualityReport:
 
 def _estimate_snr_db(samples: np.ndarray, speech_mask: np.ndarray) -> float:
     """Rough SNR: energy of frames marked speech vs frames marked non-speech."""
-    if not speech_mask.any() or not (~speech_mask).any():
+    if not speech_mask.any():
         return 0.0
+
+    if not (~speech_mask).any():
+        # All frames detected as active: check dynamic envelope to distinguish
+        # real dynamic speech from stationary white/pink noise
+        n_frames = len(samples) // FRAME_SAMPLES
+        if n_frames > 1:
+            frame_energies = [
+                np.mean(samples[i * FRAME_SAMPLES:(i + 1) * FRAME_SAMPLES] ** 2)
+                for i in range(n_frames)
+            ]
+            mean_e = np.mean(frame_energies) + 1e-10
+            std_e = np.std(frame_energies)
+            # Stationary noise has flat variance (< 0.20); speech has dynamic envelope (> 0.5)
+            if (std_e / mean_e) < 0.20:
+                return 0.0  # Stationary noise, not valid speech
+
+        speech_energy = np.mean(samples ** 2) + 1e-10
+        noise_floor = np.percentile(samples ** 2, 5) + 1e-10
+        return float(10 * np.log10(speech_energy / noise_floor))
+
     speech_energy = np.mean(samples[speech_mask] ** 2) + 1e-10
     noise_energy = np.mean(samples[~speech_mask] ** 2) + 1e-10
     return float(10 * np.log10(speech_energy / noise_energy))
+
+
 
 
 def _clipping_ratio(samples: np.ndarray) -> float:

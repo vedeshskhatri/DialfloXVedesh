@@ -56,29 +56,34 @@ WS_MIN_BUFFER_SECONDS = 1.5 # WebSocket: buffer before emitting partial result
 
 def _decode_to_mono16k(raw_bytes: bytes) -> np.ndarray:
     """
-    Decode audio bytes (any format soundfile handles: WAV, FLAC, OGG, etc.)
-    to 16kHz mono float32 PCM.
-
-    Raises ValueError on unreadable audio. Caller is responsible for turning
-    that into an 'insufficient' response rather than a 500.
-
-    Note: ffmpeg is not called here — soundfile handles most logistics-world
-    codecs (GSM-WAV, mu-law WAV, FLAC). For Opus/MP3 add a pre-decode step
-    using pydub or ffmpeg-python if needed in production.
+    Decode audio bytes (WAV, MP3, FLAC, OGG, WebM, etc.) to 16kHz mono float32 PCM.
     """
+    data = None
+    sr = None
+
+    # First attempt: fast C-based soundfile reader
     try:
         data, sr = sf.read(io.BytesIO(raw_bytes), dtype="float32", always_2d=False)
-    except Exception as e:
-        raise ValueError(f"Could not decode audio: {e}") from e
+    except Exception:
+        pass
+
+    # Second attempt: librosa fallback for MP3, browser WebM, etc.
+    if data is None:
+        try:
+            import librosa
+            data, sr = librosa.load(io.BytesIO(raw_bytes), sr=None, mono=False)
+        except Exception as e:
+            raise ValueError(f"Could not decode audio: {e}") from e
 
     if data.ndim > 1:
-        data = data.mean(axis=1)   # downmix multichannel to mono
+        data = data.mean(axis=0) if data.shape[0] < data.shape[1] else data.mean(axis=1)
 
     if sr != TARGET_SR:
         import librosa
         data = librosa.resample(data, orig_sr=sr, target_sr=TARGET_SR)
 
-    return data
+    return data.astype(np.float32)
+
 
 
 def _run_pipeline(raw_bytes: bytes, contact_id: str) -> AnalyzeResponse:
