@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dialflo Voice Attribute Inference — Real-time Demographic AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #0a0d14;
+      --bg-surface: #111726;
+      --bg-elevated: #182238;
+      --bg-card: rgba(24, 34, 56, 0.65);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.5);
+      
+      --accent-primary: #6366f1;
+      --accent-primary-hover: #4f46e5;
+      --accent-secondary: #06b6d4;
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+      
+      --status-good: #10b981;
+      --status-good-bg: rgba(16, 185, 129, 0.12);
+      --status-degraded: #f59e0b;
+      --status-degraded-bg: rgba(245, 158, 11, 0.12);
+      --status-discard: #ef4444;
+      --status-discard-bg: rgba(239, 68, 68, 0.12);
+      
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-faint: #64748b;
+      
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    /* Ambient glow background */
+    .ambient-glow {
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0.05) 50%, transparent 70%);
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 2.5rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--accent-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 1.25rem;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+    }
+
+    .brand-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .header-badges {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: var(--status-good);
+      box-shadow: 0 0 8px var(--status-good);
+    }
+
+    /* Layout Grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    @media (max-width: 960px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 1.75rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Audio Inputs */
+    .input-tabs {
+      display: flex;
+      gap: 0.5rem;
+      background: var(--bg-surface);
+      padding: 0.35rem;
+      border-radius: 12px;
+      margin-bottom: 1.25rem;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 0.6rem 0.75rem;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Drop Zone */
+    .drop-zone {
+      border: 2px dashed rgba(99, 102, 241, 0.3);
+      border-radius: 16px;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      background: rgba(99, 102, 241, 0.03);
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent-primary);
+      background: rgba(99, 102, 241, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .drop-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .drop-text-primary {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+    }
+
+    .drop-text-secondary {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* Quick Test Samples */
+    .samples-section {
+      margin-top: 1.25rem;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-faint);
+      margin-bottom: 0.6rem;
+    }
+
+    .sample-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .sample-chip {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 0.5rem 0.85rem;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+
+    .sample-chip:hover {
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      border-color: var(--border-focus);
+    }
+
+    /* Recorder */
+    .recorder-panel {
+      display: none;
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+
+    .record-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: #ef4444;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.4);
+      transition: all 0.2s ease;
+      margin-bottom: 1rem;
+    }
+
+    .record-btn.recording {
+      animation: pulse-rec 1.5s infinite;
+      background: #dc2626;
+    }
+
+    @keyframes pulse-rec {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1.08); box-shadow: 0 0 0 18px rgba(239, 68, 68, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    /* Audio Player Preview */
+    .audio-preview {
+      margin-top: 1.25rem;
+      display: none;
+      background: var(--bg-surface);
+      padding: 1rem;
+      border-radius: 14px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    audio {
+      width: 100%;
+      height: 38px;
+      outline: none;
+    }
+
+    .analyze-btn {
+      width: 100%;
+      margin-top: 1.25rem;
+      padding: 0.85rem;
+      background: var(--accent-gradient);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .analyze-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5);
+    }
+
+    .analyze-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Pipeline Status Indicator */
+    .pipeline-status {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .step-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 0.6rem 0.5rem;
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-faint);
+    }
+
+    .step-item.active {
+      border-color: var(--accent-primary);
+      color: var(--accent-secondary);
+      background: rgba(99, 102, 241, 0.05);
+    }
+
+    .step-item.done {
+      border-color: var(--status-good);
+      color: var(--status-good);
+    }
+
+    /* Results UI */
+    .decision-banner {
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .decision-banner.auto_use {
+      background: var(--status-good-bg);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .decision-banner.flag_for_review {
+      background: var(--status-degraded-bg);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    .decision-banner.discard {
+      background: var(--status-discard-bg);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .decision-tag {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }
+
+    .decision-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin-top: 0.15rem;
+    }
+
+    .decision-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .metric-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.1rem;
+    }
+
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .metric-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .metric-value {
+      font-size: 1.4rem;
+      font-weight: 800;
+      text-transform: capitalize;
+      letter-spacing: -0.01em;
+    }
+
+    .confidence-bar-bg {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 0.6rem;
+    }
+
+    .confidence-bar-fill {
+      height: 100%;
+      background: var(--accent-gradient);
+      width: 0%;
+      border-radius: 3px;
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Quality Gate Details */
+    .gate-breakdown {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .gate-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.45rem 0;
+      font-size: 0.82rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .gate-row:last-child {
+      border-bottom: none;
+    }
+
+    .gate-metric {
+      font-family: var(--font-mono);
+      font-weight: 500;
+    }
+
+    /* JSON Output Viewer */
+    .json-wrapper {
+      position: relative;
+    }
+
+    .json-box {
+      background: #060911;
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: #38bdf8;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.6rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      color: white;
+      border-color: var(--border-focus);
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 3.5rem;
+      text-align: center;
+      color: var(--text-faint);
+      font-size: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-glow"></div>
+
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="brand-logo">D</div>
+        <div>
+          <h1 class="brand-title">Dialflo Voice Attributes</h1>
+          <p class="brand-subtitle">Pre-inference Quality Gate &amp; Demographic Inference Engine</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <div class="badge"><span class="badge-dot"></span> Wav2Vec 2.0 Large</div>
+        <div class="badge">DPDP 2023 Stateless</div>
+      </div>
+    </header>
+
+    <div class="main-grid">
+      <!-- Left Column: Audio Input & Pipeline -->
+      <div class="left-col">
+        <div class="card">
+          <div class="card-title">
+            <span>Audio Ingestion</span>
+            <span style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted);">16kHz Resampling</span>
+          </div>
+
+          <div class="input-tabs">
+            <button class="tab-btn active" id="tab-file" onclick="switchTab('file')">File Upload</button>
+            <button class="tab-btn" id="tab-mic" onclick="switchTab('mic')">Record Microphone</button>
+          </div>
+
+          <!-- File Upload Mode -->
+          <div id="panel-file">
+            <div class="drop-zone" id="drop-zone" onclick="document.getElementById('audio-input').click()">
+              <div class="drop-icon">🎙️</div>
+              <div class="drop-text-primary">Click to browse or drag & drop audio</div>
+              <div class="drop-text-secondary">Supports WAV, MP3, OGG, FLAC, Opus</div>
+              <input type="file" id="audio-input" accept="audio/*" style="display: none" onchange="handleFileSelected(this.files[0])">
+            </div>
+
+            <div class="samples-section">
+              <div class="section-label">Quick Test Datasets</div>
+              <div class="sample-chips">
+                <button class="sample-chip" onclick="loadSample('/samples/speech_sample.wav', 'LibriSpeech Speech Sample')">
+                  🔊 LibriSpeech Speech Clip
+                </button>
+                <button class="sample-chip" onclick="loadSample('/samples/sample.wav', 'Synthetic Voiced Harmonic')">
+                  🎵 Synthetic Voiced Harmonic
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Microphone Mode -->
+          <div id="panel-mic" class="recorder-panel">
+            <button class="record-btn" id="rec-btn" onclick="toggleRecording()">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+            </button>
+            <div id="rec-timer" style="font-family: var(--font-mono); font-size: 1.1rem; color: var(--text-main);">00:00</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem;">Click to start speaking (aim for 2-5 seconds)</div>
+          </div>
+
+          <!-- Audio Player Preview -->
+          <div class="audio-preview" id="audio-preview">
+            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+              <span id="preview-filename">recording.wav</span>
+              <span id="preview-duration">0.0s</span>
+            </div>
+            <audio id="player" controls></audio>
+          </div>
+
+          <button class="analyze-btn" id="analyze-btn" disabled onclick="runInference()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            Analyze Voice Attributes
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Column: Real-time Analysis & Decision -->
+      <div class="right-col">
+        <div class="card">
+          <div class="card-title">
+            <span>Inference Pipeline</span>
+            <span id="processing-time" style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-secondary);">0 ms</span>
+          </div>
+
+          <!-- Pipeline steps -->
+          <div class="pipeline-status">
+            <div class="step-item" id="step-decode">1. Decode</div>
+            <div class="step-item" id="step-gate">2. Quality Gate</div>
+            <div class="step-item" id="step-infer">3. Wav2Vec2</div>
+            <div class="step-item" id="step-decide">4. Decision</div>
+          </div>
+
+          <!-- Actionable Decision Card -->
+          <div class="decision-banner discard" id="decision-banner">
+            <div>
+              <div class="decision-tag" id="decision-tag">Status</div>
+              <div class="decision-title" id="decision-title">Ready for audio input</div>
+              <div class="decision-desc" id="decision-desc">Upload or record a speech clip to run the decision policy engine.</div>
+            </div>
+          </div>
+
+          <!-- Metrics Row -->
+          <div class="metrics-row">
+            <!-- Gender Prediction -->
+            <div class="metric-box">
+              <div class="metric-header">
+                <span class="metric-label">Estimated Gender</span>
+                <span style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--text-muted);" id="gender-conf">0%</span>
+              </div>
+              <div class="metric-value" id="gender-val">—</div>
+              <div class="confidence-bar-bg">
+                <div class="confidence-bar-fill" id="gender-bar"></div>
+              </div>
+            </div>
+
+            <!-- Age Bracket Prediction -->
+            <div class="metric-box">
+              <div class="metric-header">
+                <span class="metric-label">Age Bracket</span>
+                <span style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--text-muted);" id="age-conf">0%</span>
+              </div>
+              <div class="metric-value" id="age-val">—</div>
+              <div class="confidence-bar-bg">
+                <div class="confidence-bar-fill" id="age-bar"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quality Gate Assessment -->
+          <div class="gate-breakdown">
+            <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">
+              Quality Gate Assessment (10ms Pre-Inference)
+            </div>
+            <div class="gate-row">
+              <span style="color: var(--text-muted);">Audio Signal Quality</span>
+              <span class="gate-metric" id="gate-quality" style="color: var(--text-muted);">Awaiting audio</span>
+            </div>
+            <div class="gate-row">
+              <span style="color: var(--text-muted);">Language Estimate</span>
+              <span class="gate-metric" id="lang-val" style="color: var(--text-muted);">—</span>
+            </div>
+            <div class="gate-row">
+              <span style="color: var(--text-muted);">Decision Policy Rule</span>
+              <span class="gate-metric" id="policy-rule" style="color: var(--text-muted); font-size: 0.75rem;">Quality-gated threshold</span>
+            </div>
+          </div>
+
+          <!-- Raw JSON Viewer -->
+          <div class="json-wrapper">
+            <button class="copy-btn" onclick="copyJson()">Copy JSON</button>
+            <div class="json-box" id="json-output">// AnalyzeResponse API payload will appear here</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div>Dialflo Voice Attribute Inference Service &bull; Production Architecture Take-Home</div>
+      <div>Zero-disk retention &bull; DPDP Act 2023 Compliant Pipeline</div>
+    </footer>
+  </div>
+
+  <script>
+    let selectedAudioBlob = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recStartTime = null;
+    let recTimerInterval = null;
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      if (tab === 'file') {
+        document.getElementById('panel-file').style.display = 'block';
+        document.getElementById('panel-mic').style.display = 'none';
+      } else {
+        document.getElementById('panel-file').style.display = 'none';
+        document.getElementById('panel-mic').style.display = 'block';
+      }
+    }
+
+    function handleFileSelected(file) {
+      if (!file) return;
+      selectedAudioBlob = file;
+      setupAudioPreview(file, file.name);
+    }
+
+    async function loadSample(url, name) {
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        selectedAudioBlob = blob;
+        setupAudioPreview(blob, name);
+      } catch (err) {
+        alert("Failed to load sample: " + err);
+      }
+    }
+
+    function setupAudioPreview(blob, name) {
+      const player = document.getElementById('player');
+      player.src = URL.createObjectURL(blob);
+      document.getElementById('preview-filename').textContent = name;
+      document.getElementById('audio-preview').style.display = 'block';
+      document.getElementById('analyze-btn').disabled = false;
+    }
+
+    async function toggleRecording() {
+      const btn = document.getElementById('rec-btn');
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        btn.classList.remove('recording');
+        clearInterval(recTimerInterval);
+      } else {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioChunks = [];
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+          mediaRecorder.onstop = () => {
+            selectedAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            setupAudioPreview(selectedAudioBlob, 'Microphone Recording.wav');
+            stream.getTracks().forEach(t => t.stop());
+          };
+          mediaRecorder.start();
+          btn.classList.add('recording');
+          recStartTime = Date.now();
+          recTimerInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - recStartTime) / 1000);
+            const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const s = String(elapsed % 60).padStart(2, '0');
+            document.getElementById('rec-timer').textContent = `${m}:${s}`;
+          }, 500);
+        } catch (err) {
+          alert('Microphone access denied: ' + err);
+        }
+      }
+    }
+
+    // Drag & Drop
+    const dropZone = document.getElementById('drop-zone');
+    ['dragenter', 'dragover'].forEach(eName => {
+      dropZone.addEventListener(eName, e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    });
+    ['dragleave', 'drop'].forEach(eName => {
+      dropZone.addEventListener(eName, e => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+    });
+    dropZone.addEventListener('drop', e => {
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFileSelected(e.dataTransfer.files[0]);
+      }
+    });
+
+    async function runInference() {
+      if (!selectedAudioBlob) return;
+      const btn = document.getElementById('analyze-btn');
+      btn.disabled = true;
+      btn.innerHTML = 'Analyzing...';
+
+      // Reset step indicators
+      document.getElementById('step-decode').className = 'step-item active';
+      document.getElementById('step-gate').className = 'step-item';
+      document.getElementById('step-infer').className = 'step-item';
+      document.getElementById('step-decide').className = 'step-item';
+
+      const formData = new FormData();
+      formData.append('audio', selectedAudioBlob, 'input.wav');
+      formData.append('contact_id', 'caller-' + Math.random().toString(36).substring(2, 8));
+
+      try {
+        const res = await fetch('/analyze', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        // Animate all steps done
+        document.getElementById('step-decode').className = 'step-item done';
+        document.getElementById('step-gate').className = 'step-item done';
+        document.getElementById('step-infer').className = 'step-item done';
+        document.getElementById('step-decide').className = 'step-item done';
+
+        renderResults(data);
+      } catch (err) {
+        alert('Analysis failed: ' + err);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Analyze Voice Attributes';
+      }
+    }
+
+    function renderResults(data) {
+      document.getElementById('processing-time').textContent = data.processing_ms + ' ms';
+      document.getElementById('json-output').textContent = JSON.stringify(data, null, 2);
+
+      // Decision banner
+      const banner = document.getElementById('decision-banner');
+      banner.className = 'decision-banner ' + data.decision;
+      document.getElementById('decision-tag').textContent = 'Decision Policy: ' + data.decision.replace('_', ' ');
+
+      if (data.decision === 'auto_use') {
+        document.getElementById('decision-title').textContent = '✅ Automated Personalization Authorized';
+        document.getElementById('decision-desc').textContent = 'High confidence & solid audio quality. Safe to personalize greeting or flow immediately.';
+      } else if (data.decision === 'flag_for_review') {
+        document.getElementById('decision-title').textContent = '⚠️ Flagged for Secondary Review';
+        document.getElementById('decision-desc').textContent = 'Moderate confidence or degraded audio. Fallback to neutral greeting; queue for QA review.';
+      } else {
+        document.getElementById('decision-title').textContent = '⛔ Prediction Discarded';
+        document.getElementById('decision-desc').textContent = 'Signal quality insufficient or confidence too low. Safe default to neutral handling.';
+      }
+
+      // Gender
+      const gConf = Math.round(data.gender.confidence * 100);
+      document.getElementById('gender-val').textContent = data.gender.prediction;
+      document.getElementById('gender-conf').textContent = gConf + '%';
+      document.getElementById('gender-bar').style.width = gConf + '%';
+
+      // Age
+      const aConf = Math.round(data.age_bracket.confidence * 100);
+      document.getElementById('age-val').textContent = data.age_bracket.prediction;
+      document.getElementById('age-conf').textContent = aConf + '%';
+      document.getElementById('age-bar').style.width = aConf + '%';
+
+      // Quality gate
+      const qElem = document.getElementById('gate-quality');
+      qElem.textContent = data.audio_quality.toUpperCase();
+      if (data.audio_quality === 'good') qElem.style.color = 'var(--status-good)';
+      else if (data.audio_quality === 'degraded') qElem.style.color = 'var(--status-degraded)';
+      else qElem.style.color = 'var(--status-discard)';
+
+      // Language
+      document.getElementById('lang-val').textContent = data.language ? `${data.language.prediction} (${Math.round(data.language.confidence*100)}%)` : 'Not detected';
+    }
+
+    function copyJson() {
+      const text = document.getElementById('json-output').textContent;
+      navigator.clipboard.writeText(text).then(() => alert('API response JSON copied to clipboard!'));
+    }
+  </script>
+</body>
+</html>

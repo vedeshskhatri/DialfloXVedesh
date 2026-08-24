@@ -15,8 +15,11 @@ import uuid
 
 import numpy as np
 import soundfile as sf
+import os
 from fastapi import FastAPI, File, Form, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
 
 from app import audio_quality, decision_policy, inference
 from app.logging_config import log_request
@@ -36,6 +39,11 @@ app = FastAPI(
     ),
     version="0.1.0",
 )
+
+# Mount samples directory for demo test audio
+if os.path.exists("samples"):
+    app.mount("/samples", StaticFiles(directory="samples"), name="samples")
+
 
 TARGET_SR = 16_000          # Hz — all inference runs at 16kHz mono
 MIN_USABLE_SECONDS = 1.0    # shorter clips get 'insufficient' immediately
@@ -167,11 +175,23 @@ def _insufficient_response(contact_id: str, elapsed_ms: int) -> AnalyzeResponse:
 
 
 # ---------------------------------------------------------------------------
-# REST endpoint
+# Web UI & REST endpoints
 # ---------------------------------------------------------------------------
+
+@app.get("/", response_class=HTMLResponse, tags=["ui"])
+@app.get("/demo", response_class=HTMLResponse, tags=["ui"])
+def demo_ui():
+    """Interactive web demo for voice attribute inference."""
+    html_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+    if os.path.exists(html_path):
+        with open(html_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse("<h2>Dialflo Voice Attribute Inference API is running.</h2>")
+
 
 @app.get("/health", tags=["ops"])
 def health():
+
     """Liveness probe. Returns 200 if the service is running."""
     return {"status": "ok", "service": "dialflo-voice-attributes"}
 

@@ -51,5 +51,10 @@ Thumbs.db
 !samples/sample.wav
 !samples/speech_sample.wav
 
-# Docker build artifacts
-*.tar
+# Local dev notes & prompt files (keep on disk, ignore in git)
+00_BUILD_PROMPT.md
+qanda
+scratch/
+scripts/fast_download.py
+benchmarks.py
+
