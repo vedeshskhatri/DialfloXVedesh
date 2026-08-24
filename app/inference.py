@@ -27,10 +27,16 @@ from transformers.models.wav2vec2.modeling_wav2vec2 import (
 
 import os
 
-MODEL_ID = os.environ.get(
-    "MODEL_PATH",
-    "/models/age-gender" if os.path.exists("/models/age-gender") else "audeering/wav2vec2-large-robust-24-ft-age-gender"
-)
+def _get_model_id():
+    if "MODEL_PATH" in os.environ:
+        return os.environ["MODEL_PATH"]
+    if os.path.exists("models/age-gender/model.safetensors"):
+        return os.path.abspath("models/age-gender")
+    if os.path.exists("/models/age-gender"):
+        return "/models/age-gender"
+    return "audeering/wav2vec2-large-robust-24-ft-age-gender"
+
+MODEL_ID = _get_model_id()
 
 # Age bucket boundaries (years)
 _AGE_BUCKETS = [
